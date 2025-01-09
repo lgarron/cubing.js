@@ -16,14 +16,14 @@ import type { SetupToLocation } from "../model/props/puzzle/state/SetupAnchorPro
 import type { PuzzleID } from "../model/props/puzzle/structure/PuzzleIDRequestProp";
 import type { BackgroundThemeWithAuto } from "../model/props/viewer/BackgroundProp";
 import type { BackViewLayoutWithAuto } from "../model/props/viewer/BackViewProp";
-import {
-  type ControlPanelThemeWithAuto,
-  controlsLocations,
-} from "../model/props/viewer/ControlPanelProp";
 import type {
   ColorScheme,
   ColorSchemeWithAuto,
 } from "../model/props/viewer/ColorSchemeRequestProp";
+import {
+  type ControlPanelThemeWithAuto,
+  controlsLocations,
+} from "../model/props/viewer/ControlPanelProp";
 import type { ViewerLinkPageWithAuto } from "../model/props/viewer/ViewerLinkProp";
 import type { VisualizationFormatWithAuto } from "../model/props/viewer/VisualizationProp";
 import type { VisualizationStrategy } from "../model/props/viewer/VisualizationStrategyProp";
@@ -41,6 +41,8 @@ import { twistyPlayerCSS } from "./TwistyPlayer.css";
 import { TwistyPlayerSettable } from "./TwistyPlayerSettable";
 
 const DATA_ATTRIBUTE_PREFIX = "data-";
+
+type Point = { x: number; y: number };
 
 // TODO: I couldn't figure out how to use use more specific types. Ideally, we'd
 // enforce consistency with the model.
@@ -199,10 +201,13 @@ export class TwistyPlayer
 
   buttons: TwistyButtons;
 
-  experimentalCanvasClickCallback: (...args: any) => void = () => {};
-  // #onCanvasClick() {
+  public onMouseDown?: (event: MouseEvent) => void;
+  public onMouseUp?: (event: MouseEvent) => void;
+  public onTouchStart?: (event: TouchEvent) => void;
+  public onTouchEnd?: (event: TouchEvent) => void;
+  public onClick?: (event: MouseEvent | TouchEvent) => void;
 
-  // }
+  private clickCoordinatesStart: Point = { x: 0, y: 0 };
 
   constructor(config: TwistyPlayerConfig = {}) {
     super();
@@ -217,6 +222,7 @@ export class TwistyPlayer
       }
       (this as any)[propName] = value;
     }
+    this.addEventListeners();
   }
 
   #controlsManager: ClassListManager<ControlPanelThemeWithAuto> =
@@ -525,6 +531,77 @@ export class TwistyPlayer
     } else {
       await (await screenshot(this.experimentalModel)).download(filename);
     }
+  }
+
+  private addEventListeners(): void {
+    // Using mousedown/mouseup & touchstart/touchend to detect clicks, since click event would always trigger on mouseup.
+    // Bind native DOM events to internal handlers
+    this.#visualizationWrapperElem.addEventListener("mousedown", (event) =>
+      this.handleMouseDown(event),
+    );
+    this.#visualizationWrapperElem.addEventListener("mouseup", (event) =>
+      this.handleMouseUp(event),
+    );
+    this.#visualizationWrapperElem.addEventListener("touchstart", (event) =>
+      this.handleTouchStart(event),
+    );
+    this.#visualizationWrapperElem.addEventListener("touchend", (event) =>
+      this.handleTouchEnd(event),
+    );
+  }
+
+  private handleMouseDown(event: MouseEvent): void {
+    // Call the onMouseDown callback if it exists, passing the event as an argument.
+    this.onMouseDown?.(event);
+
+    // Save the mousedown point.
+    this.clickCoordinatesStart = { x: event.clientX, y: event.clientY };
+  }
+
+  private handleMouseUp(event: MouseEvent): void {
+    // Call the onMouseUp callback if it exists, passing the event as an argument.
+    this.onMouseUp?.(event);
+
+    // Check if mousedown & mouseup are on the same point.
+    if (
+      this.isSamePoint(this.clickCoordinatesStart, {
+        x: event.clientX,
+        y: event.clientY,
+      })
+    ) {
+      // Call the onClick callback if it exists, passing the event as an argument.
+      this.onClick?.(event);
+    }
+  }
+
+  private handleTouchStart(event: TouchEvent): void {
+    // Call the onTouchStart callback if it exists, passing the event as an argument.
+    this.onTouchStart?.(event);
+
+    // Save the touch point.
+    const touch = event.touches[0];
+    this.clickCoordinatesStart = { x: touch.clientX, y: touch.clientY };
+  }
+
+  private handleTouchEnd(event: TouchEvent): void {
+    // Call the onTouchEnd callback if it exists, passing the event as an argument.
+    this.onTouchEnd?.(event);
+
+    // Check if touchstart & touchend are on the same point.
+    const touch = event.changedTouches[0];
+    if (
+      this.isSamePoint(this.clickCoordinatesStart, {
+        x: touch.clientX,
+        y: touch.clientY,
+      })
+    ) {
+      // Call the onClick callback if it exists, passing the event as an argument.
+      this.onClick?.(event);
+    }
+  }
+
+  private isSamePoint(point1: Point, point2: Point): boolean {
+    return point1.x === point2.x && point1.y === point2.y;
   }
 }
 
