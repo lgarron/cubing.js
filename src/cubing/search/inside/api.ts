@@ -26,7 +26,6 @@ import { solveMegaminx } from "./solve/puzzles/megaminx";
 import { solvePyraminx } from "./solve/puzzles/pyraminx";
 import { randomRediCubeScramble } from "./solve/puzzles/redi_cube";
 import { solveSkewb } from "./solve/puzzles/skewb";
-import { getRandomSquare1Scramble } from "./solve/puzzles/sq1";
 import {
   wasmRandomScrambleForEvent,
   wasmTwsearch,
@@ -113,7 +112,7 @@ async function randomScrambleForEvent(
       case "minx":
       case "pyram":
       case "skewb":
-      // case "sq1":
+      case "sq1":
       // case "444bf":
       case "555bf":
       // case "333mbf":
@@ -143,14 +142,6 @@ async function randomScrambleForEvent(
         return measurePerf(
           "random444OrientedScramble",
           random444OrientedScramble,
-        );
-      case "sq1":
-        return measurePerf(
-          "getRandomSquare1Scramble",
-          getRandomSquare1Scramble,
-          {
-            isPrefetch: options?.isPrefetch,
-          },
         );
       case "fto":
         return measurePerf("randomFTOScramble", randomFTOScramble, {
